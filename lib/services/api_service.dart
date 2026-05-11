@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:nativewrappers/_internal/vm/bin/common_patch.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -150,6 +151,34 @@ class ApiService {
       }
     } catch (e) {
       print('submit tugas error $e');
+      return false;
+    }
+  }
+
+  static Future<bool> deleteProduct(int id) async {
+    print('id skrg $id');
+    final token = await getToken();
+    try {
+      final response = await http.delete(
+        Uri.parse('$BASE_URL/api/products/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('status code: ${response.statusCode}');
+      print('response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      } else {
+        print('gagal hapus produk, status code: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('error delete $e');
       return false;
     }
   }
