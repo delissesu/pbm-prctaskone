@@ -1,6 +1,3 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-
 class ProductModel {
   final int id;
   final String name;
@@ -59,11 +56,11 @@ class SubmitTugasModel {
     required this.githubUrl,
   });
 
-  Map<String, dynamic> tojson() {
+  Map<String, dynamic> toJson() {
     return {
       'name': name,
       'price': price,
-      'desciption': description,
+      'description': description,
       'github_url': githubUrl,
     };
   }

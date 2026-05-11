@@ -1,8 +1,4 @@
 import 'dart:convert';
-import 'dart:nativewrappers/_internal/vm/bin/common_patch.dart';
-
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prctaskone/models/product_model.dart';
 import 'package:http/http.dart' as http;
@@ -127,24 +123,24 @@ class ApiService {
     final token = await getToken();
     try {
       final response = await http.post(
-        Uri.parse('$BASE_URL/api/submit'),
+        Uri.parse('$BASE_URL/api/products/submit'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode(request.tojson()),
+        body: jsonEncode(request.toJson()),
       );
 
       print('status code: ${response.statusCode}');
       print('response body: ${response.body}');
 
-      if (response.body == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         print(
           'ini masuk ke blok if response status code, berhasil atau create',
         );
         final data = jsonDecode(response.body);
-        return data['sucess'] == true;
+        return data['success'] == true;
       } else {
         print('Gagal submit tugass, status code: ${response.statusCode}');
         return false;
@@ -169,7 +165,7 @@ class ApiService {
 
       print('status code: ${response.statusCode}');
       print('response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
