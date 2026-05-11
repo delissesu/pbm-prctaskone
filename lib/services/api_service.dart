@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:prctaskone/models/product_model.dart';
 import 'package:http/http.dart' as http;
@@ -113,10 +114,42 @@ class ApiService {
       } else {
         print('gagal menambah produk, status code: ${response.statusCode}');
         return false;
-        
       }
     } catch (e) {
       print('error: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> submitTugas(SubmitTugasModel request) async {
+    print('send tugas: ${request.name}');
+    final token = await getToken();
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/submit'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(request.tojson()),
+      );
+
+      print('status code: ${response.statusCode}');
+      print('response body: ${response.body}');
+
+      if (response.body == 200 || response.statusCode == 201) {
+        print(
+          'ini masuk ke blok if response status code, berhasil atau create',
+        );
+        final data = jsonDecode(response.body);
+        return data['sucess'] == true;
+      } else {
+        print('Gagal submit tugass, status code: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('submit tugas error $e');
       return false;
     }
   }
