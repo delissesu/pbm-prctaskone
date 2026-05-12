@@ -42,7 +42,7 @@ class ApiService {
         }
         return data;
       } else {
-        print('status code: ${response.statusCode}');
+        print('status code: ${response.statusCode}'); 
         return {
           'success': false,
           'message': 'gagal, status: ${response.statusCode}',
@@ -72,7 +72,7 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
-          final List productsJson = data['products'];
+          final List productsJson = data['data']['products'] ?? [];
           return productsJson.map((e) => ProductModel.fromJson(e)).toList();
         } else {
           print('data sukses: ${response.statusCode}');
