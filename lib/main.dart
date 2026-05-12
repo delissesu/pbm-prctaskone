@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:prctaskone/screens/login_screens.dart';
 import 'package:prctaskone/services/api_service.dart';
+import 'package:prctaskone/theme/app_theme.dart';
 import 'screens/product_list_screen.dart';
 
 void main() {
@@ -12,14 +13,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Tugas PBM',
+    return CupertinoApp(
+      title: 'Prctaskone',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF7EC8C8),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-      ),
+      theme: kAppCupertinoTheme,
       home: const SplashDecider(),
     );
   }
@@ -42,13 +39,13 @@ class _SplashDeciderState extends State<SplashDecider> {
   Future<void> _checkToken() async {
     final token = await ApiService.getToken();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
+      CupertinoPageRoute(
         builder: (_) =>
             token != null ? const ProductListScreen() : const LoginScreen(),
       ),
@@ -57,9 +54,9 @@ class _SplashDeciderState extends State<SplashDecider> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(child: CircularProgressIndicator(color: Color(0xFF7EC8C8))),
+    return const CupertinoPageScaffold(
+      backgroundColor: AppColors.background,
+      child: Center(child: CupertinoActivityIndicator(radius: 16)),
     );
   }
 }

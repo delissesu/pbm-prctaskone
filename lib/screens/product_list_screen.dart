@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:prctaskone/models/product_model.dart';
 import 'package:prctaskone/screens/login_screens.dart';
 import 'package:prctaskone/services/api_service.dart';
+import 'package:prctaskone/theme/app_theme.dart';
 import 'package:prctaskone/widgets/product_card_widget.dart';
 import 'add_product_screen.dart';
 
@@ -14,86 +16,124 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   List<ProductModel> _products = [];
+  List<ProductModel> _filtered = [];
   bool _isLoading = true;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filtered = query.isEmpty
+          ? _products
+          : _products
+                .where(
+                  (p) =>
+                      p.name.toLowerCase().contains(query) ||
+                      p.description.toLowerCase().contains(query),
+                )
+                .toList();
+    });
   }
 
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
-    _products = await ApiService.getProducts();
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> _deleteProduct(int id) async {
-    final success = await ApiService.deleteProduct(id);
-    if (success) {
-      _loadProducts();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Produk berhasil dihapus')));
+    final newProducts = await ApiService.getProducts();
+    if (mounted) {
+      setState(() {
+        _products = newProducts;
+        _filtered = newProducts;
+        _isLoading = false;
+      });
     }
   }
 
-  Future<void> _showSubmitDialog() async {
+  Future<void> _deleteProduct(int id) async {
+    HapticFeedback.mediumImpact();
+    final success = await ApiService.deleteProduct(id);
+    if (!mounted) return;
+    if (success) {
+      _loadProducts();
+    } else {
+      _showAlert('Gagal', 'Produk gagal dihapus. Coba lagi.');
+    }
+  }
+
+  void _confirmDelete(int id, String name) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Hapus Produk'),
+        message: Text(
+          'Yakin ingin menghapus "$name"? Tindakan ini tidak dapat dibatalkan.',
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(ctx);
+              _deleteProduct(id);
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Batal'),
+        ),
+      ),
+    );
+  }
+
+  // dialog submit
+  void _showSubmitDialog() {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final githubCtrl = TextEditingController();
 
-    showDialog(
+    showCupertinoDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Submit Tugas',
-          style: TextStyle(fontWeight: FontWeight.w800, color: Colors.black87),
-        ),
-        content: SingleChildScrollView(
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Submit Tugas'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.xs),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 8),
-              _buildDialogTextField(controller: nameCtrl, label: 'Nama Produk'),
-              const SizedBox(height: 12),
-              _buildDialogTextField(
-                controller: priceCtrl,
-                label: 'Harga',
-                isNumber: true,
-              ),
-              const SizedBox(height: 12),
-              _buildDialogTextField(controller: descCtrl, label: 'Deskripsi'),
-              const SizedBox(height: 12),
-              _buildDialogTextField(
-                controller: githubCtrl,
-                label: 'GitHub URL',
-              ),
+              _buildDialogField(nameCtrl, 'Nama Produk'),
+              const SizedBox(height: AppSpacing.xs),
+              _buildDialogField(priceCtrl, 'Harga', isNumber: true),
+              const SizedBox(height: AppSpacing.xs),
+              _buildDialogField(descCtrl, 'Deskripsi'),
+              const SizedBox(height: AppSpacing.xs),
+              _buildDialogField(githubCtrl, 'GitHub URL'),
             ],
           ),
         ),
-        actionsPadding: const EdgeInsets.only(right: 16, bottom: 16),
         actions: [
-          TextButton(
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Batal'),
             onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: Colors.grey),
-            child: const Text(
-              'Batal',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7EC8C8),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Submit'),
             onPressed: () async {
               final requestModel = SubmitTugasModel(
                 name: nameCtrl.text,
@@ -101,133 +141,199 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 description: descCtrl.text,
                 githubUrl: githubCtrl.text,
               );
-
-              final success = await ApiService.submitTugas(requestModel);
-
-              if (!mounted) return;
               Navigator.pop(ctx);
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    success
-                        ? 'Tugas berhasil disubmit!'
-                        : 'Gagal submit. Cek data.',
-                  ),
-                  backgroundColor: success ? Colors.green : Colors.redAccent,
-                ),
-              );
+              final success = await ApiService.submitTugas(requestModel);
+              if (!mounted) return;
+              if (success) {
+                _loadProducts();
+                _showAlert('Berhasil', 'Tugas berhasil disubmit!');
+              } else {
+                _showAlert('Gagal', 'Gagal submit. Periksa data kamu.');
+              }
             },
-            child: const Text(
-              'Submit',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDialogTextField({
-    required TextEditingController controller,
-    required String label,
+  Widget _buildDialogField(
+    TextEditingController controller,
+    String placeholder, {
     bool isNumber = false,
   }) {
-    return TextField(
+    return CupertinoTextField(
       controller: controller,
+      placeholder: placeholder,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7EC8C8), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
     );
+  }
+
+  void _showAlert(String title, String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _goToAddProduct() async {
+    final result = await Navigator.push<bool>(
+      context,
+      CupertinoPageRoute(builder: (_) => const AddProductScreen()),
+    );
+    // Reload regardless — handles both true and cases where result is null
+    // (e.g. user pops via back-swipe after a successful add).
+    if (result == true && mounted) {
+      await _loadProducts();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7EC8C8),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Katalog Produk',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_file_rounded),
-            tooltip: 'Submit Tugas',
-            onPressed: _showSubmitDialog,
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.groupedBackground,
+      child: CustomScrollView(
+        slivers: [
+          // navbar
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('Daftar Produk'),
+            backgroundColor: AppColors.groupedBackground,
+            border: null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Submit tugas
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(44, 44),
+                  onPressed: _showSubmitDialog,
+                  child: const Icon(
+                    CupertinoIcons.arrow_up_doc,
+                    size: 22,
+                    color: AppColors.primary,
+                  ),
+                ),
+                // Add product
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(44, 44),
+                  onPressed: _goToAddProduct,
+                  child: const Icon(
+                    CupertinoIcons.add_circled_solid,
+                    size: 26,
+                    color: AppColors.primary,
+                  ),
+                ),
+                // Logout
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(44, 44),
+                  onPressed: () async {
+                    await ApiService.deleteToken();
+                    if (!mounted) return;
+                    Navigator.pushReplacement(
+                      context,
+                      CupertinoPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  child: const Icon(
+                    CupertinoIcons.square_arrow_right,
+                    size: 22,
+                    color: AppColors.destructive,
+                  ),
+                ),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () async {
-              await ApiService.deleteToken();
-              if (!mounted) return;
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
+          // Search
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              child: CupertinoSearchTextField(
+                controller: _searchController,
+                placeholder: 'Cari produk…',
+                backgroundColor: AppColors.secondaryGroupedBackground,
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF7EC8C8)),
+
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+
+          // Content
+          if (_isLoading)
+            const SliverFillRemaining(
+              child: Center(child: CupertinoActivityIndicator(radius: 14)),
             )
-          : _products.isEmpty
-          ? const Center(
-              child: Text(
-                'Belum ada produk.\nTambahkan produk pertamamu!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 16, height: 1.5),
+          else if (_filtered.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      CupertinoIcons.cube_box,
+                      size: 56,
+                      color: AppColors.tertiaryLabel,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      _products.isEmpty
+                          ? 'Belum ada produk.\nTambahkan produk pertamamu!'
+                          : 'Tidak ada produk yang cocok.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.subhead.copyWith(
+                        color: AppColors.secondaryLabel,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
-          : RefreshIndicator(
-              color: const Color(0xFF7EC8C8),
-              onRefresh: _loadProducts,
-              child: ListView.builder(
-                padding: const EdgeInsets.only(top: 16, bottom: 80),
-                itemCount: _products.length,
-                itemBuilder: (ctx, i) => ProductCardWidget(
-                  product: _products[i],
-                  onDelete: () => _deleteProduct(_products[i].id),
+          else
+            CupertinoSliverRefreshControl(onRefresh: _loadProducts),
+
+          if (!_isLoading && _filtered.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => ProductCardWidget(
+                    product: _filtered[index],
+                    onDelete: () => _confirmDelete(
+                      _filtered[index].id,
+                      _filtered[index].name,
+                    ),
+                    isFirst: index == 0,
+                    isLast: index == _filtered.length - 1,
+                  ),
+                  childCount: _filtered.length,
                 ),
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF7EC8C8),
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shape: const CircleBorder(),
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddProductScreen()),
-          );
-          _loadProducts();
-        },
-        child: const Icon(Icons.add_rounded, size: 28),
+
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+        ],
       ),
     );
   }

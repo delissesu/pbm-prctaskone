@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'package:prctaskone/theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'product_list_screen.dart';
 
@@ -15,17 +17,23 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  @override
+  void dispose() {
+    _nimController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> _handleLogin() async {
     final nim = _nimController.text.trim();
     final password = _passwordController.text.trim();
 
     if (nim.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('NIM dan Password tidak boleh kosong')),
-      );
+      _showAlert('Kesalahan', 'NIM atau Password tidak boleh kosong.');
       return;
     }
 
+    HapticFeedback.lightImpact();
     setState(() => _isLoading = true);
 
     try {
@@ -35,166 +43,144 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success'] == true) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ProductListScreen()),
+          CupertinoPageRoute(builder: (_) => const ProductListScreen()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Login gagal')),
-        );
+        _showAlert('Login Gagal', result['message'] ?? 'Terjadi kesalahan.');
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      _showAlert('Error', 'Terjadi kesalahan jaringan: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _showAlert(String title, String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+    return CupertinoPageScaffold(
+      backgroundColor: AppColors.groupedBackground,
+      child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.favorite_rounded,
-                  size: 72,
-                  color: Color(0xFF7EC8C8),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.xxl),
 
-                const Text(
-                  'Selamat Datang\nPraktikan',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
-                    height: 1.2,
+                  const Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.xxs),
+                  child: Text('Masuk', style: AppTextStyles.largeTitle),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                const Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.xxs),
+                  child: Text(
+                    'Gunakan NIM sebagai username dan password.',
+                    style: AppTextStyles.footnote,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.lg),
 
-                Text(
-                  'Gunakan NIM untuk Username dan Password',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 40),
-
-                TextFormField(
-                  controller: _nimController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Username',
-                    hintText: 'Masukkan NIM',
-                    prefixIcon: const Icon(
-                      Icons.person_outline,
-                      color: Colors.grey,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF7EC8C8),
-                        width: 2,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
+                // Fields
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.secondaryGroupedBackground,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  keyboardType:
-                      TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Masukkan NIM sebagai Password',
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: Colors.grey,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: Colors.grey,
+                  child: Column(
+                    children: [
+                      CupertinoTextField.borderless(
+                        controller: _nimController,
+                        keyboardType: TextInputType.number,
+                        placeholder: 'Username',
+                        placeholderStyle: const TextStyle(
+                          color: AppColors.tertiaryLabel,
+                          fontSize: 17,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: 14,
+                        ),
+                        style: AppTextStyles.body,
+                        clearButtonMode: OverlayVisibilityMode.editing,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF7EC8C8),
-                        width: 2,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7EC8C8),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Masuk',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                      const AppDivider(leftIndent: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoTextField.borderless(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              keyboardType: TextInputType.number,
+                              placeholder: 'Password',
+                              placeholderStyle: const TextStyle(
+                                color: AppColors.tertiaryLabel,
+                                fontSize: 17,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: 14,
+                              ),
+                              style: AppTextStyles.body,
                             ),
                           ),
+                          CupertinoButton(
+                            padding: const EdgeInsets.only(right: AppSpacing.sm),
+                            minimumSize: const Size(36, 36),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                            child: Icon(
+                              _obscurePassword
+                                  ? CupertinoIcons.eye_slash
+                                  : CupertinoIcons.eye,
+                              size: 20,
+                              color: AppColors.tertiaryLabel,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 40),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // Button
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton.filled(
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: _isLoading
+                        ? const CupertinoActivityIndicator(
+                            color: CupertinoColors.white,
+                          )
+                        : const Text('Masuk', style: AppTextStyles.buttonLabel),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),

@@ -1,14 +1,19 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:prctaskone/models/product_model.dart';
+import 'package:prctaskone/theme/app_theme.dart';
 
 class ProductCardWidget extends StatelessWidget {
   final ProductModel product;
   final VoidCallback onDelete;
+  final bool isFirst;
+  final bool isLast;
 
   const ProductCardWidget({
     super.key,
     required this.product,
     required this.onDelete,
+    this.isFirst = false,
+    this.isLast = false,
   });
 
   String _formatPrice(double price) {
@@ -17,93 +22,100 @@ class ProductCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = Radius.circular(AppRadius.card);
+    final borderRadius = BorderRadius.only(
+      topLeft: isFirst ? radius : Radius.zero,
+      topRight: isFirst ? radius : Radius.zero,
+      bottomLeft: isLast ? radius : Radius.zero,
+      bottomRight: isLast ? radius : Radius.zero,
+    );
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.secondaryGroupedBackground,
+        borderRadius: borderRadius,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7EC8C8).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.inventory_2_rounded,
-                color: Color(0xFF7EC8C8),
-                size: 28,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
             ),
-            const SizedBox(width: 16),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Product Icon
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatPrice(product.price),
-                    style: const TextStyle(
-                      color: Color(0xFF7EC8C8),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    product.description,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(50),
-                onTap: onDelete,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(
-                    Icons.delete_outline_rounded,
-                    color: Colors.red.shade400,
-                    size: 24,
+                  child: const Icon(
+                    CupertinoIcons.cube_box_fill,
+                    size: 26,
+                    color: AppColors.primary,
                   ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.md),
+
+                // text content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.4,
+                          color: AppColors.label,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatPrice(product.price),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        product.description,
+                        style: AppTextStyles.footnote,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                
+                // delete
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(44, 44),
+                  onPressed: onDelete,
+                  child: const Icon(
+                    CupertinoIcons.delete,
+                    size: 20,
+                    color: AppColors.destructive,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          if (!isLast)
+            AppDivider(leftIndent: 84),
+        ],
       ),
     );
   }
